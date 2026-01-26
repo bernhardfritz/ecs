@@ -13,7 +13,6 @@ type World struct {
 	nextComponent        uint
 	nextSystem           int
 	archetypes           map[uint]*archetype
-	componentArchetypes  [][]*archetype
 	systemComponentsMask []uint
 	systemArchetypes     [][]*archetype
 	entityArchetype      []*archetype
@@ -26,7 +25,6 @@ func NewWorld(capacity int) *World {
 		nextComponent:        0,
 		nextSystem:           0,
 		archetypes:           make(map[uint]*archetype),
-		componentArchetypes:  make([][]*archetype, 0, bits.UintSize),
 		systemComponentsMask: make([]uint, 0),
 		systemArchetypes:     make([][]*archetype, 0),
 		entityArchetype:      make([]*archetype, capacity),
@@ -41,7 +39,6 @@ func (w *World) RegisterComponent(componentPointer IsComponentPointer) {
 func CreateComponent[T any](w *World) Component[T] {
 	component := Component[T](w.nextComponent)
 	w.nextComponent++
-	w.componentArchetypes = append(w.componentArchetypes, make([]*archetype, 0))
 
 	return component
 }
