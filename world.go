@@ -81,7 +81,7 @@ func (w *World) CreateEntity(components ...HasComponent) Entity {
 	// components are not necessarily sorted if archetype already exists but that's fine as long as code below doesn't require components to be sorted
 	arch.entities.add(entity)
 	for _, component := range components {
-		arch.columns[countLowerSetBits(component.Component(w).id(), component.Component(w).flag())].add(component)
+		arch.columns[countLowerSetBits(arch.id, component.Component(w).flag())].add(component)
 	}
 	w.entityArchetype[entity] = arch
 
