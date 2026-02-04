@@ -1,9 +1,7 @@
 package ecs
 
 import (
-	"cmp"
 	"iter"
-	"math/bits"
 	"slices"
 )
 
@@ -22,7 +20,7 @@ func NewWorld(capacity int) *World {
 	return &World{
 		capacity:             capacity,
 		nextEntity:           0,
-		nextComponent:        0,
+		nextComponent:        1,
 		nextSystem:           0,
 		archetypes:           make(map[uint]*archetype),
 		systemComponentsMask: make([]uint, 0),
@@ -31,43 +29,28 @@ func NewWorld(capacity int) *World {
 	}
 }
 
-func (w *World) RegisterComponent(componentPointer IsComponentPointer) {
-	componentPointer.set(w.nextComponent)
-	w.nextComponent++
+func (w *World) RegisterComponent(component ComponentPointer) {
+	component.set(w.nextComponent)
+	w.nextComponent <<= 1
 }
 
-func CreateComponent[T any](w *World) Component[T] {
-	component := Component[T](w.nextComponent)
-	w.nextComponent++
-
-	return component
-}
-
-type HasComponent interface {
-	Component(w *World) IsComponent
-}
-
-func (w *World) compareHasComponents(a, b HasComponent) int {
-	return cmp.Compare(a.Component(w).id(), b.Component(w).id())
-}
-
-func (w *World) CreateEntity(components ...HasComponent) Entity {
+func (w *World) CreateEntity(componentValues ...ComponentValue) Entity {
 	entity := Entity(w.nextEntity)
 	w.nextEntity++
 	var archetypeId uint = 0
-	for _, component := range components {
-		archetypeId |= component.Component(w).flag()
+	for _, componentValue := range componentValues {
+		archetypeId |= componentValue.GetComponent().toUint()
 	}
 	arch := w.archetypes[archetypeId]
 	if arch == nil {
-		slices.SortFunc(components, w.compareHasComponents)
-		columns := make([]isColumn, 0, len(components))
-		for _, component := range components {
-			columns = append(columns, component.Component(w).createColumn())
+		slices.SortFunc(componentValues, compareComponentValues)
+		columns := make([]anyColumn, 0, len(componentValues))
+		for _, component := range componentValues {
+			columns = append(columns, component.GetComponent().createColumn())
 		}
 		arch = &archetype{
 			id:       archetypeId,
-			entities: newSparseSet(w.capacity),
+			entities: newSparseSet[Entity](w.capacity),
 			columns:  columns,
 		}
 		w.archetypes[archetypeId] = arch
@@ -80,20 +63,21 @@ func (w *World) CreateEntity(components ...HasComponent) Entity {
 	}
 	// components are not necessarily sorted if archetype already exists but that's fine as long as code below doesn't require components to be sorted
 	arch.entities.add(entity)
-	for _, component := range components {
-		arch.columns[countLowerSetBits(arch.id, component.Component(w).flag())].add(component)
+	for _, componentValue := range componentValues {
+		column := arch.getColumn(componentValue.GetComponent())
+		column.add(componentValue)
 	}
 	w.entityArchetype[entity] = arch
 
 	return entity
 }
 
-func (w *World) CreateSystem(fn func(*World, iter.Seq[Entity]), components ...IsComponent) func() {
+func (w *World) CreateSystem(fn func(*World, iter.Seq[Entity]), components ...AnyComponent) func() {
 	system := w.nextSystem
 	w.nextSystem++
 	var componentsMask uint = 0
 	for _, component := range components {
-		componentsMask |= component.flag()
+		componentsMask |= component.toUint()
 	}
 	w.systemComponentsMask = append(w.systemComponentsMask, componentsMask)
 	w.systemArchetypes = append(w.systemArchetypes, make([]*archetype, 0))
@@ -115,12 +99,6 @@ func (w *World) CreateSystem(fn func(*World, iter.Seq[Entity]), components ...Is
 			}
 		})
 	}
-}
-
-func countLowerSetBits(number uint, flag uint) int {
-	lowerMask := flag - 1
-
-	return bits.OnesCount(number & lowerMask)
 }
 
 // TODO removing entities

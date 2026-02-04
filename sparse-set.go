@@ -2,52 +2,52 @@ package ecs
 
 import "math/bits"
 
-type sparseSet struct {
+type sparseSet[T ~uint] struct {
 	sparse []int
-	dense  []Entity
+	dense  []T
 }
 
-func newSparseSet(capacity int) *sparseSet {
+func newSparseSet[T ~uint](capacity int) *sparseSet[T] {
 	sparse := make([]int, max(capacity, 1)) // TODO allow sparseSet to be initialized with 0 capacity, requires custom code for add
 
-	return &sparseSet{
+	return &sparseSet[T]{
 		sparse: sparse,
-		dense:  make([]Entity, 0, capacity),
+		dense:  make([]T, 0, capacity),
 	}
 }
 
-func (s *sparseSet) contains(e Entity) bool {
-	return int(e) < len(s.sparse) && s.sparse[e] != 0
+func (s *sparseSet[T]) contains(value T) bool {
+	return int(value) < len(s.sparse) && s.sparse[value] != 0
 }
 
-func (s *sparseSet) add(e Entity) {
-	if s.contains(e) {
+func (s *sparseSet[T]) add(value T) {
+	if s.contains(value) {
 		return
 	}
 	i := len(s.dense)
-	s.dense = append(s.dense, e)
-	if uint(e) >= uint(len(s.sparse)) {
-		ratio := (uint(len(s.sparse)) + uint(e) - 1) / uint(e)
+	s.dense = append(s.dense, value)
+	if uint(value) >= uint(len(s.sparse)) {
+		ratio := (uint(len(s.sparse)) + uint(value) - 1) / uint(value)
 		n := bits.Len(ratio - 1)
-		newLen := uint(e) << n
-		newSparse := make([]int, newLen) // grow sparse array by the smallest multiple of 2 in order to fit entity e
+		newLen := uint(value) << n
+		newSparse := make([]int, newLen) // grow sparse array by the smallest multiple of 2 in order to fit value
 		copy(newSparse, s.sparse)
 		s.sparse = newSparse
 	}
-	s.sparse[e] = i + 1 // intentionally store index + 1
+	s.sparse[value] = i + 1 // intentionally store index + 1
 }
 
-func (s *sparseSet) remove(e Entity) {
-	if !s.contains(e) {
+func (s *sparseSet[T]) remove(value T) {
+	if !s.contains(value) {
 		return
 	}
 	last := s.dense[len(s.dense)-1]
-	s.dense[len(s.dense)-1], s.dense[s.indexOf(e)] = s.dense[s.indexOf(e)], s.dense[len(s.dense)-1]
-	s.sparse[last], s.sparse[e] = s.sparse[e], s.sparse[last]
+	s.dense[len(s.dense)-1], s.dense[s.indexOf(value)] = s.dense[s.indexOf(value)], s.dense[len(s.dense)-1]
+	s.sparse[last], s.sparse[value] = s.sparse[value], s.sparse[last]
 	s.dense = s.dense[:len(s.dense)-1]
-	s.sparse[e] = 0
+	s.sparse[value] = 0
 }
 
-func (s *sparseSet) indexOf(e Entity) int {
-	return s.sparse[e] - 1 // intentionally return index - 1
+func (s *sparseSet[T]) indexOf(value T) int {
+	return s.sparse[value] - 1 // intentionally return index - 1
 }

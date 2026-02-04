@@ -12,7 +12,7 @@ type Position struct {
 	Y float32
 }
 
-func (p Position) Component(w *World) IsComponent {
+func (p Position) GetComponent() AnyComponent {
 	return positionComponent
 }
 
@@ -21,13 +21,13 @@ type Velocity struct {
 	Vy float32
 }
 
-func (v Velocity) Component(w *World) IsComponent {
+func (v Velocity) GetComponent() AnyComponent {
 	return velocityComponent
 }
 
 type Health int
 
-func (h Health) Component(w *World) IsComponent {
+func (h Health) GetComponent() AnyComponent {
 	return healthComponent
 }
 

@@ -1,14 +1,14 @@
 package ecs
 
-type isColumn interface {
-	add(value any)
-	get(index int) any
-}
-
 type column[T any] []T
 
 func newColumn[T any]() *column[T] {
 	return new(column[T])
+}
+
+type anyColumn interface {
+	add(value any)
+	get(index int) any
 }
 
 func (c *column[T]) add(value any) {
